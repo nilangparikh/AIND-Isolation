@@ -20,6 +20,19 @@ class IsolationTest(unittest.TestCase):
         self.player2 = "Player2"
         self.game = isolation.Board(self.player1, self.player2)
 
+    def testMinimaxPlayer(self):
+        print("Testing MinimaxPlayer")
+        self.minimaxplayer = game_agent.MinimaxPlayer(search_depth=0)
+        print(self.minimaxplayer.get_move(self.game, 10))
+
+    def tearDown(self):
+        print("Teardown started")
+
 
 if __name__ == '__main__':
-    unittest.main()
+    #unittest.main()
+    isol = IsolationTest(methodName='runTest')
+    isol.setUp()
+    isol.testMinimaxPlayer()
+    isol.tearDown()
+

@@ -170,6 +170,44 @@ class MinimaxPlayer(IsolationPlayer):
         # Return the best move from the last completed search iteration
         return best_move
 
+    def terminal_test(self, game):
+        """ Return True if the game is over for the active player
+        and False otherwise.
+        """
+        return not bool(game.get_legal_moves())
+
+    def min_value(self, game):
+        """ Return the value for a win (+1) if the game is over,
+        otherwise return the minimum value over all legal child
+        nodes.
+        """
+        if self.terminal_test(game):
+            return 1
+        
+        v = float("inf")
+        
+        for m in game.get_legal_moves():
+            print("legal move: ", m)
+            v = min(v, self.max_value(game.forecast_move(m)))
+
+        return v
+
+    def max_value(self, game):
+        """ Return the value for a loss (-1) if the game is over,
+        otherwise return the maximum value over all legal child
+        nodes.
+        """
+        if self.terminal_test(game):
+            return -1
+        
+        v = float("-inf")
+        
+        for m in game.get_legal_moves():
+            print("legal move: ", m)
+            v = max(v, self.min_value(game.forecast_move(m)))
+
+        return v
+
     def minimax(self, game, depth):
         """Implement depth-limited minimax search algorithm as described in
         the lectures.
@@ -209,12 +247,23 @@ class MinimaxPlayer(IsolationPlayer):
                 each helper function or else your agent will timeout during
                 testing.
         """
-        if self.time_left() < self.TIMER_THRESHOLD:
+        if self.time_left < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+        print("search depth = ", self.search_depth)
+        print("depth = ", depth)
+        game.to_string()
 
+        if depth == 0:
+            return (-1, -1)
+
+        self.best_move =  max(game.get_legal_moves(),
+               key=lambda m: self.min_value(game.forecast_move(m)))
+
+        print(self.best_move)
+
+        return self.best_move
 
 class AlphaBetaPlayer(IsolationPlayer):
     """Game-playing agent that chooses a move using iterative deepening minimax
