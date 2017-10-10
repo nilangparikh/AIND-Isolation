@@ -22,7 +22,7 @@ class IsolationTest(unittest.TestCase):
 
     def testMinimaxPlayer(self):
         print("Testing MinimaxPlayer")
-        self.minimaxplayer = game_agent.MinimaxPlayer(search_depth=0)
+        self.minimaxplayer = game_agent.MinimaxPlayer(search_depth=1)
         print(self.minimaxplayer.get_move(self.game, 10))
 
     def tearDown(self):
