@@ -34,8 +34,7 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    # Used Open Move Score hueristic from sample_players.py
+    # Used Open Move Score heuristic from sample_players.py
     if game.is_loser(player):
         return float("-inf")
 
@@ -67,8 +66,7 @@ def custom_score_2(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    # Used Improved Score hueristic from sample_players.py
+    # Used Improved Score heuristic from sample_players.py
     if game.is_loser(player):
         return float("-inf")
 
@@ -102,8 +100,7 @@ def custom_score_3(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # TODO: finish this function!
-    # Used Center Score hueristic from sample_players.py
+    # Used Center Score heuristic from sample_players.py
     if game.is_loser(player):
         return float("-inf")
 
