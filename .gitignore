@@ -13,6 +13,9 @@ __pycache__/
 # Text files
 *.txt
 
+# PyCharm IDE
+.idea/
+
 # Distribution / packaging
 .Python
 env/
