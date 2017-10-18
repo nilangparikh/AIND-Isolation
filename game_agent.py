@@ -34,14 +34,16 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # Used Open Move Score heuristic from sample_players.py
+    # Used Center Score heuristic from sample_players.py
     if game.is_loser(player):
         return float("-inf")
 
     if game.is_winner(player):
         return float("inf")
 
-    return float(len(game.get_legal_moves(player)))
+    w, h = game.width / 2., game.height / 2.
+    y, x = game.get_player_location(player)
+    return float((h - y) ** 2 + (w - x) ** 2)
 
 
 def custom_score_2(game, player):
@@ -100,16 +102,14 @@ def custom_score_3(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # Used Center Score heuristic from sample_players.py
+    # Used Open Move Score heuristic from sample_players.py
     if game.is_loser(player):
         return float("-inf")
 
     if game.is_winner(player):
         return float("inf")
 
-    w, h = game.width / 2., game.height / 2.
-    y, x = game.get_player_location(player)
-    return float((h - y)**2 + (w - x)**2)
+    return float(len(game.get_legal_moves(player)))
 
 
 class IsolationPlayer:
@@ -234,84 +234,54 @@ class MinimaxPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # def terminal_test(self, game, depth):
-        #     """ Return True if the game is over for the active player
-        #     and False otherwise.
-        #     """
-        #     if self.time_left() < self.TIMER_THRESHOLD:
-        #         raise SearchTimeout()
-        #     return not bool(game.get_legal_moves()) or (depth == 0)
-        #
-        # def min_value(self, game, depth):
-        #     """ Return the value for a win (+1) if the game is over,
-        #     otherwise return the minimum value over all legal child
-        #     nodes.
-        #     """
-        #     if self.time_left() < self.TIMER_THRESHOLD:
-        #         raise SearchTimeout()
-        #
-        #     if terminal_test(self, game, depth):
-        #         return self.score(game, self)
-        #
-        #     v = float("inf")
-        #
-        #     for m in game.get_legal_moves():
-        #         v = min(v, max_value(self, game.forecast_move(m), depth - 1))
-        #
-        #     return v
-        #
-        # def max_value(self, game, depth):
-        #     """ Return the value for a loss (-1) if the game is over,
-        #     otherwise return the maximum value over all legal child
-        #     nodes.
-        #     """
-        #     if self.time_left() < self.TIMER_THRESHOLD:
-        #         raise SearchTimeout()
-        #
-        #     if terminal_test(self, game, depth):
-        #         return self.score(game, self)
-        #
-        #     v = float("-inf")
-        #
-        #     for m in game.get_legal_moves():
-        #         v = max(v, min_value(self, game.forecast_move(m), depth-1))
-        #
-        #     return v
-        #
-        def minimax_recursion_helper(self, game, depth, isMaximizing=True):
+        def _recursive_minimax(self, game, depth, isMaximizing=True):
+            # Timeout has occurred and an exception is raised.
             if self.time_left() < self.TIMER_THRESHOLD:
                 raise SearchTimeout()
 
+            # If the depth = 0 then we have reached the top of the game tree and should return the score.
             if depth == 0:
                 return self.score(game, self)
 
+            # Retrieve all the legal moves associated with the current position.
             legal_moves = game.get_legal_moves()
+
+            # If there are no legal moves then return score to indicate no legal moves remain.
             if not legal_moves:
                 return self.score(game, self)
 
+            # Maximizing case: Recursively traverse down the game tree and determine best move before the time runs out.
             if isMaximizing:
                 best_score = float("-inf")
-                for child_move in legal_moves:
-                    child_score = minimax_recursion_helper(self, game.forecast_move(child_move), depth - 1, False)
-                    best_score = max(best_score, child_score)
+                for move in legal_moves:
+                    score = _recursive_minimax(self, game.forecast_move(move), depth - 1, False)
+                    best_score = max(best_score, score)
                 return best_score
             else:
+                # Minimizing case: Recursively traverse down the game tree and determine the bes move that will reduce
+                # the opponent's chances of winning.
                 best_score = float("inf")
-                for child_move in legal_moves:
-                    child_score = minimax_recursion_helper(self, game.forecast_move(child_move), depth - 1, True)
-                    best_score = min(best_score, child_score)
+                for move in legal_moves:
+                    score = _recursive_minimax(self, game.forecast_move(move), depth - 1, True)
+                    best_score = min(best_score, score)
                 return best_score
 
+        # Retrieve all the legal moves associated with the current position.
         legal_moves = game.get_legal_moves()
+
+        # If there are no legal moves then return -1, -1 to indicate no legal moves remain.
         if not legal_moves:
             return (-1, -1)
 
-        legal_moves_to_score_map = {}
+        # Store the moves.
+        moves_map = {}
 
+        # for all the moves, recursively call minimax function to retrieve all the best moves before time runs out.
         for move in legal_moves:
-            legal_moves_to_score_map[move] = minimax_recursion_helper(self, game.forecast_move(move), depth - 1, False)
+            moves_map[move] = _recursive_minimax(self, game.forecast_move(move), depth - 1, False)
 
-        best_move = max(legal_moves_to_score_map, key=lambda k: legal_moves_to_score_map[k])
+        # Determine the best move from the list of moves.
+        best_move = max(moves_map, key=lambda k: moves_map[k])
 
         return best_move
 
@@ -360,7 +330,9 @@ class AlphaBetaPlayer(IsolationPlayer):
         try:
             # The try/except block will automatically catch the exception
             # raised when the timer is about to expire.
+            # Use Iterative Deepening with Alpha Beta Pruning to find best move with least number of tries.
             depth = 1
+
             while True:
                 best_move = self.alphabeta(game, depth)
                 depth += 1
@@ -419,93 +391,63 @@ class AlphaBetaPlayer(IsolationPlayer):
         if self.time_left() < self.TIMER_THRESHOLD:
             raise SearchTimeout()
 
-        # def terminal_test(self, game, depth):
-        #     """ Return True if the game is over for the active player
-        #     and False otherwise.
-        #     """
-        #     if self.time_left() < self.TIMER_THRESHOLD:
-        #         raise SearchTimeout()
-        #     return not bool(game.get_legal_moves()) or (depth == 0)
-        #
-        # def min_value(self, game, depth, alpha, beta):
-        #     """ Return the value for a win (+1) if the game is over,
-        #     otherwise return the minimum value over all legal child
-        #     nodes.
-        #     """
-        #     if self.time_left() < self.TIMER_THRESHOLD:
-        #         raise SearchTimeout()
-        #
-        #     if terminal_test(self, game, depth):
-        #         return self.score(game, self)
-        #
-        #     v = float("inf")
-        #
-        #     for m in game.get_legal_moves():
-        #         v = min(v, max_value(self, game.forecast_move(m), depth - 1, alpha, beta))
-        #         if v <= alpha:
-        #             return v
-        #         beta = min(beta, v)
-        #
-        #     return v
-        #
-        # def max_value(self, game, depth, alpha, beta):
-        #     """ Return the value for a loss (-1) if the game is over,
-        #     otherwise return the maximum value over all legal child
-        #     nodes.
-        #     """
-        #     if self.time_left() < self.TIMER_THRESHOLD:
-        #         raise SearchTimeout()
-        #
-        #     if terminal_test(self, game, depth):
-        #         return self.score(game, self)
-        #
-        #     v = float("-inf")
-        #
-        #     for m in game.get_legal_moves():
-        #         v = max(v, min_value(self, game.forecast_move(m), depth-1, alpha, beta))
-        #         if v >= beta:
-        #             return v
-        #         alpha = max(alpha, v)
-        #
-        #     return v
-
-        def alphabeta_recursion_helper(self, game, depth, alpha, beta, isMaximizing=True):
+        def _recursive_alphabeta(self, game, depth, alpha, beta, isMaximizing=True):
+            # Timeout has occurred and an exception is raised.
             if self.time_left() < self.TIMER_THRESHOLD:
                 raise SearchTimeout()
 
+            # If the depth = 0 then we have reached the top of the game tree and should return the score.
             if depth == 0:
                 return self.score(game, self)
 
+            # Retrieve all the legal moves associated with the current position.
             legal_moves = game.get_legal_moves()
+
+            # If there are no legal moves then return score to indicate no legal moves remain.
             if not legal_moves:
                 return self.score(game, self)
 
+            # Maximizing case: Recursively traverse down the game tree and determine best move before the time runs out.
             if isMaximizing:
                 best_score = float("-inf")
-                for child_move in legal_moves:
-                    child_score = alphabeta_recursion_helper(self, game.forecast_move(child_move), depth - 1, alpha, beta, False)
-                    best_score = max(best_score, child_score)
+                score = float("-inf")
+                for move in legal_moves:
+                    score = _recursive_alphabeta(self, game.forecast_move(move), depth - 1, alpha, beta, False)
+                    best_score = max(best_score, score)
+                    if beta <= score:
+                        return score
                     alpha = max(alpha, best_score)
 
                 return best_score
             else:
+                # Minimizing case: Recursively traverse down the game tree and determine the bes move that will reduce
+                # the opponent's chances of winning.
                 best_score = float("inf")
-                for child_move in legal_moves:
-                    child_score = alphabeta_recursion_helper(self, game.forecast_move(child_move), depth - 1, alpha, beta, True)
-                    best_score = min(best_score, child_score)
-                    alpha = max(alpha, best_score)
+                score = float("inf")
+                for move in legal_moves:
+                    score = _recursive_alphabeta(self, game.forecast_move(move), depth - 1, alpha, beta, True)
+                    best_score = min(best_score, score)
+                    if alpha <= score:
+                        return score
+                    beta = min(beta, best_score)
 
                 return best_score
 
+        # Retrieve all the legal moves associated with the current position.
         legal_moves = game.get_legal_moves()
+
+        # If there are no legal moves then return -1, -1 to indicate no legal moves remain.
         if not legal_moves:
             return (-1, -1)
 
-        legal_moves_to_score_map = {}
+        # Store the moves.
+        moves_map = {}
 
+        # for all the moves, recursively call alphabeta function to retrieve all the best moves before time runs out.
         for move in legal_moves:
-            legal_moves_to_score_map[move] = alphabeta_recursion_helper(self, game.forecast_move(move), depth - 1, alpha, beta, False)
+            moves_map[move] = _recursive_alphabeta(self, game.forecast_move(move), depth - 1, alpha, beta, False)
 
-        best_move = max(legal_moves_to_score_map, key=lambda k: legal_moves_to_score_map[k])
+        # Determine the best move from the list of moves.
+        best_move = max(moves_map, key=lambda k: moves_map[k])
         
         return best_move
