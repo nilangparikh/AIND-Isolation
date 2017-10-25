@@ -3,14 +3,14 @@ test your agent's strength against a set of known agents using tournament.py
 and include the results in your report.
 """
 import random
+import math
 
 
 class SearchTimeout(Exception):
     """Subclass base exception for code clarity. """
     pass
 
-
-def custom_score(game, player):
+def custom_score(game, player, weight = 2, center_weight = 2):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -34,19 +34,53 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # Used Center Score heuristic from sample_players.py
+    # Custom Heuristic
     if game.is_loser(player):
         return float("-inf")
 
     if game.is_winner(player):
         return float("inf")
 
-    w, h = game.width / 2., game.height / 2.
-    y, x = game.get_player_location(player)
-    return float((h - y) ** 2 + (w - x) ** 2)
+    # We have moves to play. How many more than our opponent?
+    player_moves = game.get_legal_moves(player)
+    opponent_moves = game.get_legal_moves(game.get_opponent(player))
+    player_moves_left = len(player_moves)
+    opponent_moves_left = len(opponent_moves)
+
+    center_y_pos, center_x_pos = int(game.height / 2), int(game.width / 2)
+    player_y_pos, player_x_pos = game.get_player_location(player)
+    opponent_y_pos, opponent_x_pos = game.get_player_location(game.get_opponent(player))
+    player_distance = abs(player_y_pos - center_y_pos) + abs(player_x_pos - center_x_pos)
+    opponent_distance = abs(opponent_y_pos - center_y_pos) + abs(opponent_x_pos - center_x_pos)
+
+    if (center_y_pos, center_x_pos) in player_moves:
+        w, h = game.width / 2., game.height / 2.
+        y, x = game.get_player_location(player)
+        return float((h - y) ** 2 + (w - x) ** 2)
+    else:
+        initial_moves_available = float(game.width * game.height)
+        num_blank_spaces = len(game.get_blank_spaces())
+        decay_factor = num_blank_spaces / initial_moves_available
+        opponent_weight, player_weight = weight, 1
+
+        for move in player_moves:
+            if move[0] == center_y_pos or move[1] == center_x_pos:
+                if player_moves_left <= 2:
+                    player_weight *= (center_weight * decay_factor)
+                else:
+                    player_weight *= center_weight
+
+        for move in opponent_moves:
+            if move[0] == center_y_pos or move[1] == center_x_pos:
+                if opponent_moves_left >= 6:
+                    opponent_weight *= (center_weight * decay_factor)
+                else:
+                    opponent_weight *= center_weight
+
+        return float((player_moves_left * player_weight) - (opponent_moves_left * opponent_weight))
 
 
-def custom_score_2(game, player):
+def custom_score_2(game, player, weight = 2, center_weight = 2):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -68,19 +102,34 @@ def custom_score_2(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # Used Improved Score heuristic from sample_players.py
+    # Weighted Center
     if game.is_loser(player):
         return float("-inf")
 
     if game.is_winner(player):
         return float("inf")
 
-    own_moves = len(game.get_legal_moves(player))
-    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    return float(own_moves - opp_moves)
+    center_y_pos, center_x_pos = int(game.height / 2), int(game.width / 2)
+
+    player_moves = game.get_legal_moves(player)
+    opponent_moves = game.get_legal_moves(game.get_opponent(player))
+    player_moves_left = len(player_moves)
+    opponent_moves_left = len(opponent_moves)
+
+    opponent_weight, player_weight = weight, 1
+
+    for move in player_moves:
+        if move[0]== center_y_pos or move[1]== center_x_pos:
+            player_weight *= center_weight
+
+    for move in opponent_moves:
+        if move[0]== center_y_pos or move[1]== center_x_pos:
+            opponent_weight *= center_weight
+
+    return float((player_moves_left * player_weight) - (opponent_moves_left * opponent_weight))
 
 
-def custom_score_3(game, player):
+def custom_score_3(game, player, weight = 2, center_weight = 2):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
 
@@ -102,14 +151,35 @@ def custom_score_3(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-    # Used Open Move Score heuristic from sample_players.py
+    # Decay weighted center
     if game.is_loser(player):
         return float("-inf")
 
     if game.is_winner(player):
         return float("inf")
 
-    return float(len(game.get_legal_moves(player)))
+    center_y_pos, center_x_pos = int(game.height / 2), int(game.width / 2)
+
+    player_moves = game.get_legal_moves(player)
+    opponent_moves = game.get_legal_moves(game.get_opponent(player))
+    player_moves_left = len(player_moves)
+    opponent_moves_left = len(opponent_moves)
+
+    opponent_weight, player_weight = weight, 1
+
+    initial_moves_available = float(game.width * game.height)
+    num_blank_spaces = len(game.get_blank_spaces())
+    decay_factor = num_blank_spaces / initial_moves_available
+
+    for move in player_moves:
+        if move[0] == center_y_pos or move[1] == center_x_pos:
+            player_weight *= (center_weight * decay_factor)
+
+    for move in opponent_moves:
+        if move[0] == center_y_pos or move[1] == center_x_pos:
+            opponent_weight *= (center_weight * decay_factor)
+
+    return float((player_moves_left * player_weight) - (opponent_moves_left * opponent_weight))
 
 
 class IsolationPlayer:
@@ -248,7 +318,10 @@ class MinimaxPlayer(IsolationPlayer):
 
             # If there are no legal moves then return score to indicate no legal moves remain.
             if not legal_moves:
-                return self.score(game, self)
+                if isMaximizing:
+                    return float("-inf")
+                else:
+                    return float("inf")
 
             # Maximizing case: Recursively traverse down the game tree and determine best move before the time runs out.
             if isMaximizing:
@@ -405,7 +478,10 @@ class AlphaBetaPlayer(IsolationPlayer):
 
             # If there are no legal moves then return score to indicate no legal moves remain.
             if not legal_moves:
-                return self.score(game, self)
+                if isMaximizing:
+                    return float("-inf")
+                else:
+                    return float("inf")
 
             # Maximizing case: Recursively traverse down the game tree and determine best move before the time runs out.
             if isMaximizing:
@@ -427,7 +503,7 @@ class AlphaBetaPlayer(IsolationPlayer):
                 for move in legal_moves:
                     score = _recursive_alphabeta(self, game.forecast_move(move), depth - 1, alpha, beta, True)
                     best_score = min(best_score, score)
-                    if alpha <= score:
+                    if alpha >= score:
                         return score
                     beta = min(beta, best_score)
 
@@ -446,6 +522,7 @@ class AlphaBetaPlayer(IsolationPlayer):
         # for all the moves, recursively call alphabeta function to retrieve all the best moves before time runs out.
         for move in legal_moves:
             moves_map[move] = _recursive_alphabeta(self, game.forecast_move(move), depth - 1, alpha, beta, False)
+            alpha = float("-inf")
 
         # Determine the best move from the list of moves.
         best_move = max(moves_map, key=lambda k: moves_map[k])
